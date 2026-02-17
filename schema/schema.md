@@ -1,6 +1,5 @@
 ```mermaid
 ---
-title: sql ER Diagram
 config:
     layout: elk
 ---
@@ -30,173 +29,217 @@ erDiagram
     }
 
 
-    GENRES {
+    GENRE {
         int id PK
         string genre
     }
-    ANIME_GENRES {
+    ANIME_GENRE {
         int anime_id PK,FK
         int genre_id PK,FK
     }
-    ANIME }|--|{ ANIME_GENRES : 1_to_n
-    GENRES }|--|{ ANIME_GENRES : 0_to_n
+    ANIME }|--|{ ANIME_GENRE : 1_to_n
+    GENRE }|--|{ ANIME_GENRE : 0_to_n
 
 
-    EXPLICIT_GENRES {
+    EXPLICIT_GENRE {
         int id PK
         string explicit_genre
     }
-    ANIME_EXPLICIT_GENRES {
+    ANIME_EXPLICIT_GENRE {
         int anime_id PK,FK
         int explicit_genre_id PK,FK
     }
-    ANIME }|--|{ ANIME_EXPLICIT_GENRES : 0_to_n
-    EXPLICIT_GENRES }|--|{ ANIME_EXPLICIT_GENRES : 0_to_n
+    ANIME }|--|{ ANIME_EXPLICIT_GENRE : 0_to_n
+    EXPLICIT_GENRE }|--|{ ANIME_EXPLICIT_GENRE : 0_to_n
 
 
-    TYPES {
+    TYPE {
         int id PK
         string type
     }
-    ANIME }|--|{ TYPES : 1_to_1
+    ANIME }|--|{ TYPE : 1_to_1
     
 
-    LICENSORS {
+    LICENSOR {
         int id PK
         string licensor
     }
-    ANIME_LICENSORS {
+    ANIME_LICENSOR {
         int anime_id PK,FK
         int licensor_id PK,FK
     }
-    LICENSORS }|--|{ ANIME_LICENSORS : 0_to_n
-    ANIME }|--|{ ANIME_LICENSORS : 0_to_n
+    LICENSOR }|--|{ ANIME_LICENSOR : 0_to_n
+    ANIME }|--|{ ANIME_LICENSOR : 0_to_n
 
 
-    DEMOGRAPHICS {
+    DEMOGRAPHIC {
         int id PK
         string demographic
     }
-    ANIME_DEMOGRAPHICS {
+    ANIME_DEMOGRAPHIC {
         int anime_id PK,FK
         int demographic_id PK,FK
     }
-    DEMOGRAPHICS }|--|{ ANIME_DEMOGRAPHICS : 0_to_n
-    ANIME }|--|{ ANIME_DEMOGRAPHICS : 0_to_n
+    DEMOGRAPHIC }|--|{ ANIME_DEMOGRAPHIC : 0_to_n
+    ANIME }|--|{ ANIME_DEMOGRAPHIC : 0_to_n
 
 
-    PRODUCERS {
+    PRODUCER {
         int id PK
         string producer
     }
-    ANIME_PRODUCERS {
+    ANIME_PRODUCER {
         int anime_id PK,FK
         int producer_id PK,FK
     }
-    PRODUCERS }|--|{ ANIME_PRODUCERS : 0_to_n
-    ANIME }|--|{ ANIME_PRODUCERS : 0_to_n
+    PRODUCER }|--|{ ANIME_PRODUCER : 0_to_n
+    ANIME }|--|{ ANIME_PRODUCER : 0_to_n
 
 
-    RATINGS {
+    RATING {
         int id PK
         string rating
     }
-    ANIME }|--|{ RATINGS : 1_to_1
+    ANIME }|--|{ RATING : 1_to_1
 
 
-    SEASONS {
+    SEASON {
         int id PK
         string season
     }
-    ANIME }|--|{ SEASONS : 1_to_1
+    ANIME }|--|{ SEASON : 1_to_1
 
 
-    SOURCES {
+    SOURCE {
         int id PK
         string source
     }
-    ANIME }|--|{ SOURCES : 1_to_1
+    ANIME }|--|{ SOURCE : 1_to_1
 
 
-    STREAMING_SERVICES {
+    STREAMING_SERVICE {
         int id PK
         string streaming_service
     }
-    ANIME_STREAMING_SERVICES {
+    ANIME_STREAMING_SERVICE {
         int anime_id PK,FK
         int streaming_service_id PK,FK
     }
-    STREAMING_SERVICES }|--|{ ANIME_STREAMING_SERVICES : 0_to_n
-    ANIME }|--|{ ANIME_STREAMING_SERVICES : 0_to_n
+    STREAMING_SERVICE }|--|{ ANIME_STREAMING_SERVICE : 0_to_n
+    ANIME }|--|{ ANIME_STREAMING_SERVICE : 0_to_n
 
 
-    STATUSES {
+    STATUS {
         int id PK
         string status
     }
-    ANIME }|--|{ STATUSES : 1_to_1
+    ANIME }|--|{ STATUS : 1_to_1
 
 
-    STUDIOS {
+    STUDIO {
         int id PK
         string studio
     }
-    ANIME_STUDIOS {
+    ANIME_STUDIO {
         int anime_id PK,FK
         int studio_id PK,FK
     }
-    STUDIOS }|--|{ ANIME_STUDIOS : 0_to_n
-    ANIME }|--|{ ANIME_STUDIOS : 0_to_n
+    STUDIO }|--|{ ANIME_STUDIO : 0_to_n
+    ANIME }|--|{ ANIME_STUDIO : 0_to_n
 
 
-    THEMES {
+    THEME {
         int id PK
         string theme
     }
-    ANIME_THEMES {
+    ANIME_THEME {
         int anime_id PK,FK
         int theme_id PK,FK
     }
-    THEMES }|--|{ ANIME_THEMES : 0_to_n
-    ANIME }|--|{ ANIME_THEMES : 0_to_n
+    THEME }|--|{ ANIME_THEME : 0_to_n
+    ANIME }|--|{ ANIME_THEME : 0_to_n
 
 
 
-    CHARACTERS {
+    CHARACTER {
         int id PK
+        string url
+        string name
+        string name_kanji "nullable"
+        string image
+        int favorites
+        string about "nullable"
     }
-    CHARACTER_ANIME_WORKS {
+    CHARACTER_ANIME_WORK {
         int anime_id PK,FK
         int character_id PK,FK
-        int role_id FK
+        int character_role_id FK
     }
-    CHARACTER_ANIME_ROLES{
+    CHARACTER_ROLE {
         int id PK
         string role
     }
-    ANIME }|--|{ CHARACTER_ANIME_WORKS : has
-    CHARACTERS }|--|{ CHARACTER_ANIME_WORKS : has
-    CHARACTER_ANIME_ROLES }|--|{ CHARACTER_ANIME_WORKS : has
-
-    CHARACTER_NICKNAMES {
+    CHARACTER_NICKNAME {
         int character_id PK,FK
         string nickname PK
     }
-    CHARACTERS }|--|{ CHARACTER_NICKNAMES : has
+    ANIME }|--|{ CHARACTER_ANIME_WORK : 1_to_n
+    CHARACTER }|--|{ CHARACTER_NICKNAME : 0_to_n
+    CHARACTER }|--|{ CHARACTER_ANIME_WORK : 0_to_n
+    CHARACTER_ANIME_WORK }|--|{ CHARACTER_ROLE : 1_to_1
 
-    PEOPLE {
+
+
+    COUNTRY {
         int id PK
+        string country
     }
-    PEOPLE_ANIME_WORKS {
+
+
+
+    PERSON {
+        int id PK
+        string url
+        string website_url "nullable"
+        string image_url "nullable"
+        string name "nullable"
+        string given_name "nullable"
+        string family_name "nullable"
+        date birthday "nullable"
+        int favorites
+        string city
+        int country_id FK
+    }
+    PERSON_ANIME_WORK {
         int anime_id PK,FK
-        int people_id PK,FK
-        int role_id FK
+        int person_id PK,FK
+        string position
     }
-    PEOPLE_ALTERNATE_NAMES {
-        int people_id PK,FK
+    PERSON_VOICE_WORK {
+        int person_id PK,FK
+        int anime_id PK,FK
+        int character_id PK,FK
+        int language_id PK,FK
+    }
+    PERSON_ALTERNATE_NAME {
+        int person_id PK,FK
         string alternate_name PK
     }
-    PEOPLE }|--|{ PEOPLE_ANIME_WORKS : has
-    PEOPLE }|--|{ PEOPLE_ALTERNATE_NAMES : has
-    CHARACTER_ANIME_ROLES }|--|{ PEOPLE_ANIME_WORKS : has
+    LANGUAGE {
+        int id PK
+        string language
+    }
+    PERSON }|--|{ PERSON_VOICE_WORK : 0_to_n
+    PERSON_VOICE_WORK }|--|{ LANGUAGE : 1_to_1
+    PERSON }|--|{ PERSON_ANIME_WORK : 0_to_n
+    PERSON }|--|{ PERSON_ALTERNATE_NAME : 0_to_n
+    PERSON }|--|{ COUNTRY : 1_to_1
+
+
+
+    USER {
+        int id PK
+        int country_id FK
+    }
+    USER }|--|{ COUNTRY : 1_to_1
 ```
