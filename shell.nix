@@ -4,5 +4,6 @@ pkgs.mkShell {
 	packages = with pkgs; [
 		python3
 		python3Packages.tqdm
+		python3Packages.psycopg
 	];
 }

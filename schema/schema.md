@@ -15,7 +15,7 @@ erDiagram
         string title_japanese
         string url
         string image_url
-        decimal score "nullable"
+        decimal score
         decimal scored_by "nullable"
         date start_date "nullable"
         date end_date "nullable"
