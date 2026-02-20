@@ -26,6 +26,8 @@ MAPPINGS = [
     ("013", "details/themes_distinct.csv", "theme", "theme"),
     ("014", "character_anime_works/role_distinct.csv", "character_role", "role"),
     ("015", "profiles/gender_distinct.csv", "gender", "gender"),
+    ("016", "profiles/location_distinct.csv", "country", "country"),
+    ("017", "person_voice_works/language_distinct.csv", "language", "language"),
 ]
 
 

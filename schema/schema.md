@@ -191,8 +191,8 @@ erDiagram
         int id PK
         string url
         string name
-        string name_kanji "nullable"
-        string image
+        string name_japanese "nullable"
+        string image_url
         int favorites
         string about "nullable"
     }
