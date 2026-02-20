@@ -1,6 +1,35 @@
 # database
 Repository to handle ER schema and DDL scripts
 
+## End-to-end pipeline
+
+Script: [run-pipeline.py](run-pipeline.py)
+
+Esegue tutti gli step in ordine per passare da `datasets` ai dati caricati in entrambi i DB:
+1. genera tutti i distinct CSV da datasets (`data-import/generate_distinct_csvs.py`)
+2. genera lookup SQL (`dml/generate_lookup_seeds.py`)
+3. crea/aggiorna schema PostgreSQL (`run-sql.py --scripts-dir ddl/tables`)
+4. genera seed SQL principali (`dml/generate_main_seeds.py`)
+5. carica seed SQL in PostgreSQL (`run-sql.py --scripts-dir dml/seeds`)
+6. genera JSON NoSQL (`dml/generate_document_seeds.py`)
+7. carica JSON in MongoDB (`run-nosql.py`)
+
+Esempio:
+
+```bash
+python3 run-pipeline.py \
+  --n 100 \
+  --seed 42 \
+  --nosql-database anime_db \
+  --nosql-clear
+```
+
+Note:
+
+- Usa `.env.local` tramite gli script interni (`SQL_DATABASE_URL` e `NOSQL_DATABASE_URL`) se non passi connection string esplicite.
+- Se non passi `--user-ids`, il pipeline usa automaticamente gli ID da `dml/seeds/021_app_user_seed.sql` (generato da `generate_main_seeds.py`).
+- Se passi `--user-ids`, devono essere ID presenti in `app_user` su PostgreSQL.
+
 ## Table creation PostgreSQL
 
 - The SQL scripts for the tables are under [ddl/tables](ddl/tables), ordered by a numbered prefix (`001_...sql`, `002_...sql`, ...).
@@ -10,7 +39,7 @@ The script automatically load the environment variables through the .env.local f
 
 Dipendenza Python richiesta:
 
-- `pip install psycopg[binary]`
+- `pip install psycopg[binary] tqdm`
 
 ## Generate PostgreSQL DML seeds
 
@@ -62,7 +91,7 @@ Genera documenti utente e rating in MongoDB secondo gli schemi:
 
 Dipendenze Python richieste:
 
-- `pip install pymongo psycopg[binary]`
+- `pip install pymongo psycopg[binary] tqdm`
 
 Lo script legge i dati da:
 - PostgreSQL `app_user` table (per ottenere i nomi utente dagli ID)

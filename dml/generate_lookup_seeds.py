@@ -3,6 +3,8 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from tqdm import tqdm
+
 
 ROOT = Path(__file__).resolve().parents[1]
 INPUT_DIR = ROOT / "data-import" / "output"
@@ -38,13 +40,15 @@ def sql_escape(value: str) -> str:
 def read_distinct_values(file_path: Path) -> list[tuple[int, str]]:
     rows: list[tuple[int, str]] = []
     with file_path.open("r", encoding="utf-8", newline="") as handle:
+        total_rows = max(sum(1 for _ in handle) - 1, 0)
+        handle.seek(0)
         reader = csv.DictReader(handle)
         required = {"id", "value"}
         headers = set(reader.fieldnames or [])
         if not required.issubset(headers):
             raise ValueError(f"CSV must contain columns {sorted(required)}: {file_path}")
 
-        for row in reader:
+        for row in tqdm(reader, total=total_rows, desc=f"Reading {file_path.name}", unit="row"):
             raw_id = (row.get("id") or "").strip()
             raw_value = (row.get("value") or "").strip()
             if not raw_id or not raw_value:
@@ -87,7 +91,11 @@ def render_seed_sql(table_name: str, value_column: str, rows: list[tuple[int, st
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    for number, source_filename, table_name, value_column in MAPPINGS:
+    for number, source_filename, table_name, value_column in tqdm(
+        MAPPINGS,
+        desc="Generating lookup seeds",
+        unit="table",
+    ):
         source_path = INPUT_DIR / source_filename
         if not source_path.exists():
             raise FileNotFoundError(f"Missing source file: {source_path}")

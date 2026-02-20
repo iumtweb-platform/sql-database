@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
+from tqdm import tqdm
 
 
 DATASETS_DIR = Path(__file__).resolve().parent.parent / "data-import" / "datasets"
@@ -25,6 +26,11 @@ OUTPUT_DIR = Path(__file__).resolve().parent / "document-seeds"
 PROFILES_CSV = DATASETS_DIR / "profiles.csv"
 RATINGS_CSV = DATASETS_DIR / "ratings.csv"
 FAVS_CSV = DATASETS_DIR / "favs.csv"
+
+
+def count_data_rows(file_path: Path) -> int:
+    with file_path.open("r", encoding="utf-8") as file:
+        return max(sum(1 for _ in file) - 1, 0)
 
 
 def load_env_variables() -> None:
@@ -86,9 +92,10 @@ def normalize_status(status: str) -> str:
 
 def load_profiles(usernames: set[str]) -> dict[str, dict[str, Any]]:
     profiles: dict[str, dict[str, Any]] = {}
+    total_rows = count_data_rows(PROFILES_CSV)
     with PROFILES_CSV.open("r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
-        for row in reader:
+        for row in tqdm(reader, total=total_rows, desc="Loading profiles", unit="row"):
             username = row.get("username", "")
             if username in usernames:
                 profiles[username] = {
@@ -105,9 +112,10 @@ def load_profiles(usernames: set[str]) -> dict[str, dict[str, Any]]:
 
 def load_ratings(usernames: set[str]) -> dict[str, list[dict[str, int | str]]]:
     ratings: dict[str, list[dict[str, int | str]]] = defaultdict(list)
+    total_rows = count_data_rows(RATINGS_CSV)
     with RATINGS_CSV.open("r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
-        for row in reader:
+        for row in tqdm(reader, total=total_rows, desc="Loading ratings", unit="row"):
             username = row.get("username", "")
             if username in usernames:
                 ratings[username].append(
@@ -125,9 +133,10 @@ def load_favorites(usernames: set[str]) -> dict[str, dict[str, list[int]]]:
     favorites: dict[str, dict[str, list[int]]] = defaultdict(
         lambda: {"anime": [], "characters": [], "people": []}
     )
+    total_rows = count_data_rows(FAVS_CSV)
     with FAVS_CSV.open("r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
-        for row in reader:
+        for row in tqdm(reader, total=total_rows, desc="Loading favorites", unit="row"):
             username = row.get("username", "")
             if username in usernames:
                 fav_type = str(row.get("fav_type", "")).strip()
@@ -151,7 +160,11 @@ def build_rating_documents(
     user_rating_ids: dict[int, list[int]] = defaultdict(list)
     current_rating_id = 1
 
-    for user_id in sorted(user_id_to_username.keys()):
+    for user_id in tqdm(
+        sorted(user_id_to_username.keys()),
+        desc="Building rating documents",
+        unit="user",
+    ):
         username = user_id_to_username[user_id]
         for rating_data in ratings_data.get(username, []):
             rating_doc: dict[str, int | str] = {
@@ -177,7 +190,11 @@ def build_user_documents(
 ) -> list[dict[str, Any]]:
     user_documents: list[dict[str, Any]] = []
 
-    for user_id in sorted(user_id_to_username.keys()):
+    for user_id in tqdm(
+        sorted(user_id_to_username.keys()),
+        desc="Building user documents",
+        unit="user",
+    ):
         username = user_id_to_username[user_id]
         profile = profiles_data.get(
             username,

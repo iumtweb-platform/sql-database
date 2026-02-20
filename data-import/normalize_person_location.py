@@ -12,15 +12,23 @@ import re
 from pathlib import Path
 from typing import Dict
 
+from tqdm import tqdm
+
+
+def count_data_rows(csv_path: Path) -> int:
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        return max(sum(1 for _ in f) - 1, 0)
+
 
 def extract_countries(csv_path: Path) -> Dict[str, int]:
     """Extract all unique countries from relevant_location column."""
     countries = {}
     country_id = 1
     
+    total_rows = count_data_rows(csv_path)
     with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
-        for row in reader:
+        for row in tqdm(reader, total=total_rows, desc='Extracting countries', unit='row'):
             location = row['relevant_location'].strip('"')
             # Extract country (after the last comma)
             parts = location.rsplit(',', 1)
@@ -56,6 +64,7 @@ def normalize_person_details(
             writer.writerow([country_id, country])
     
     # Write normalized person_details
+    total_rows = count_data_rows(input_path)
     with open(input_path, 'r', encoding='utf-8') as infile, \
          open(output_dir / 'person_details_normalized.csv', 'w', newline='', encoding='utf-8') as outfile:
         
@@ -67,7 +76,7 @@ def normalize_person_details(
         writer = csv.DictWriter(outfile, fieldnames=fieldnames)
         writer.writeheader()
         
-        for row in reader:
+        for row in tqdm(reader, total=total_rows, desc='Normalizing person details', unit='row'):
             location = row['relevant_location'].strip('"')
             # Split by last comma to separate city and country
             parts = location.rsplit(',', 1)

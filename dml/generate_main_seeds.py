@@ -8,6 +8,8 @@ import random
 from datetime import datetime
 from pathlib import Path
 
+from tqdm import tqdm
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_IMPORT_DIR = ROOT / "data-import"
@@ -182,8 +184,14 @@ def sql_literal(value: object) -> str:
     return str(value)
 
 
+def count_data_rows(file_path: Path) -> int:
+    with file_path.open("r", encoding="utf-8") as handle:
+        return max(sum(1 for _ in handle) - 1, 0)
+
+
 def read_lookup_map(file_path: Path) -> dict[str, int]:
     mapping: dict[str, int] = {}
+    total_rows = count_data_rows(file_path)
     with file_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required = {"id", "value"}
@@ -191,7 +199,7 @@ def read_lookup_map(file_path: Path) -> dict[str, int]:
         if not required.issubset(headers):
             raise GeneratorError(f"Lookup CSV must contain columns {sorted(required)}: {file_path}")
 
-        for row in reader:
+        for row in tqdm(reader, total=total_rows, desc=f"Lookup {file_path.name}", unit="row"):
             raw_id = (row.get("id") or "").strip()
             raw_value = (row.get("value") or "").strip()
             if not raw_id or not raw_value:
@@ -294,13 +302,18 @@ def sample_app_users(
     reservoir: list[tuple[int, dict[str, str]]] = []
     total_rows = 0
 
+    progress_total_rows = count_data_rows(profiles_path)
+    total_rows = 0
     with profiles_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required_cols = {"username", "gender", "birthday", "location", "joined"}
         if not required_cols.issubset(set(reader.fieldnames or [])):
             raise GeneratorError(f"Missing required columns in {profiles_path}")
 
-        for row_idx, row in enumerate(reader, start=1):
+        for row_idx, row in enumerate(
+            tqdm(reader, total=progress_total_rows, desc="Sampling app users", unit="row"),
+            start=1,
+        ):
             total_rows += 1
             snapshot = {
                 "username": (row.get("username") or "").strip(),
@@ -346,11 +359,12 @@ def choose_anime_ids(n: int, random_seed: int | None) -> set[int]:
     source_path = OUTPUT_DIR / "details" / "mal_id_distinct.csv"
     ids: list[int] = []
 
+    total_rows = count_data_rows(source_path)
     with source_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         if "value" not in (reader.fieldnames or []):
             raise GeneratorError(f"Missing 'value' column in {source_path}")
-        for row in reader:
+        for row in tqdm(reader, total=total_rows, desc="Reading anime ID pool", unit="row"):
             value = parse_int(row.get("value"))
             if value is not None:
                 ids.append(value)
@@ -425,6 +439,7 @@ def generate() -> None:
     character_anime_rows_map: dict[tuple[int, int], tuple[int, int, int]] = {}
 
     character_anime_path = DATASETS_DIR / "character_anime_works.csv"
+    character_anime_total_rows = count_data_rows(character_anime_path)
     with character_anime_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required_cols = {"anime_mal_id", "character_mal_id", "role"}
@@ -432,7 +447,7 @@ def generate() -> None:
             raise GeneratorError(f"Missing required columns in {character_anime_path}")
 
         skipped_no_role = 0
-        for row in reader:
+        for row in tqdm(reader, total=character_anime_total_rows, desc="Reading character-anime works", unit="row"):
             anime_id = parse_int(row.get("anime_mal_id"))
             if anime_id is None or anime_id not in selected_anime_ids:
                 continue
@@ -460,13 +475,14 @@ def generate() -> None:
 
     character_rows_map: dict[int, tuple[object, ...]] = {}
     characters_path = DATASETS_DIR / "characters.csv"
+    characters_total_rows = count_data_rows(characters_path)
     with characters_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required_cols = {"character_mal_id", "url", "name", "name_kanji", "image", "favorites", "about"}
         if not required_cols.issubset(set(reader.fieldnames or [])):
             raise GeneratorError(f"Missing required columns in {characters_path}")
 
-        for row in reader:
+        for row in tqdm(reader, total=characters_total_rows, desc="Reading characters", unit="row"):
             character_id = parse_int(row.get("character_mal_id"))
             if character_id is None or character_id not in character_ids_needed:
                 continue
@@ -494,6 +510,7 @@ def generate() -> None:
     anime_theme_rows_set: set[tuple[int, int]] = set()
 
     details_path = DATASETS_DIR / "details.csv"
+    details_total_rows = count_data_rows(details_path)
     with details_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required_cols = {
@@ -538,7 +555,7 @@ def generate() -> None:
         unknown_streaming_services = 0
         unknown_studios = 0
         unknown_themes = 0
-        for row in reader:
+        for row in tqdm(reader, total=details_total_rows, desc="Reading anime details", unit="row"):
             anime_id = parse_int(row.get("mal_id"))
             if anime_id is None or anime_id not in selected_anime_ids:
                 continue
@@ -680,13 +697,14 @@ def generate() -> None:
     ]
 
     stats_found: set[int] = set()
+    stats_total_rows = count_data_rows(stats_path)
     with stats_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required_cols = {"mal_id", *stats_cols}
         if not required_cols.issubset(set(reader.fieldnames or [])):
             raise GeneratorError(f"Missing required columns in {stats_path}")
 
-        for row in reader:
+        for row in tqdm(reader, total=stats_total_rows, desc="Reading anime stats", unit="row"):
             anime_id = parse_int(row.get("mal_id"))
             if anime_id is None or anime_id not in anime_base_rows:
                 continue
@@ -709,7 +727,7 @@ def generate() -> None:
 
     anime_rows: list[tuple[object, ...]] = []
     skipped_anime = 0
-    for anime_id in sorted(selected_anime_ids):
+    for anime_id in tqdm(sorted(selected_anime_ids), desc="Building anime rows", unit="anime"):
         record = anime_base_rows.get(anime_id)
         if record is None:
             print(f"Warning: skipping anime {anime_id} (missing details row)")
@@ -769,13 +787,14 @@ def generate() -> None:
     anime_recommendation_rows_set: set[tuple[int, int]] = set()
     skipped_recommendations = 0
     recommendations_path = DATASETS_DIR / "recommendations.csv"
+    recommendations_total_rows = count_data_rows(recommendations_path)
     with recommendations_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required_cols = {"mal_id", "recommendation_mal_id"}
         if not required_cols.issubset(set(reader.fieldnames or [])):
             raise GeneratorError(f"Missing required columns in {recommendations_path}")
 
-        for row in reader:
+        for row in tqdm(reader, total=recommendations_total_rows, desc="Reading recommendations", unit="row"):
             anime_id = parse_int(row.get("mal_id"))
             recommended_anime_id = parse_int(row.get("recommendation_mal_id"))
             if anime_id is None or recommended_anime_id is None:
@@ -800,13 +819,19 @@ def generate() -> None:
 
     character_nickname_rows_set: set[tuple[int, str]] = set()
     character_nickname_path = DATASETS_DIR / "character_nicknames.csv"
+    character_nickname_total_rows = count_data_rows(character_nickname_path)
     with character_nickname_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required_cols = {"character_mal_id", "nickname"}
         if not required_cols.issubset(set(reader.fieldnames or [])):
             raise GeneratorError(f"Missing required columns in {character_nickname_path}")
 
-        for row in reader:
+        for row in tqdm(
+            reader,
+            total=character_nickname_total_rows,
+            desc="Reading character nicknames",
+            unit="row",
+        ):
             character_id = parse_int(row.get("character_mal_id"))
             nickname = normalize_text(row.get("nickname"))
             if character_id is None or nickname is None:
@@ -820,6 +845,7 @@ def generate() -> None:
     person_ids_needed: set[int] = set()
     person_anime_rows_map: dict[tuple[int, int], tuple[int, int, str]] = {}
     person_anime_path = DATASETS_DIR / "person_anime_works.csv"
+    person_anime_total_rows = count_data_rows(person_anime_path)
 
     with person_anime_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
@@ -827,7 +853,7 @@ def generate() -> None:
         if not required_cols.issubset(set(reader.fieldnames or [])):
             raise GeneratorError(f"Missing required columns in {person_anime_path}")
 
-        for row in reader:
+        for row in tqdm(reader, total=person_anime_total_rows, desc="Reading person-anime works", unit="row"):
             anime_id = parse_int(row.get("anime_mal_id"))
             if anime_id is None or anime_id not in valid_anime_ids:
                 continue
@@ -850,6 +876,7 @@ def generate() -> None:
     person_voice_rows_set: set[tuple[int, int, int, int]] = set()
     skipped_person_voice = 0
     person_voice_path = DATASETS_DIR / "person_voice_works.csv"
+    person_voice_total_rows = count_data_rows(person_voice_path)
 
     with person_voice_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
@@ -862,7 +889,7 @@ def generate() -> None:
         if not required_cols.issubset(set(reader.fieldnames or [])):
             raise GeneratorError(f"Missing required columns in {person_voice_path}")
 
-        for row in reader:
+        for row in tqdm(reader, total=person_voice_total_rows, desc="Reading person voice works", unit="row"):
             anime_id = parse_int(row.get("anime_mal_id"))
             if anime_id is None or anime_id not in valid_anime_ids:
                 continue
@@ -889,6 +916,7 @@ def generate() -> None:
     person_rows_map: dict[int, tuple[object, ...]] = {}
     skipped_person_details = 0
     person_details_path = DATASETS_DIR / "person_details.csv"
+    person_details_total_rows = count_data_rows(person_details_path)
 
     with person_details_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
@@ -907,7 +935,7 @@ def generate() -> None:
         if not required_cols.issubset(set(reader.fieldnames or [])):
             raise GeneratorError(f"Missing required columns in {person_details_path}")
 
-        for row in reader:
+        for row in tqdm(reader, total=person_details_total_rows, desc="Reading person details", unit="row"):
             person_id = parse_int(row.get("person_mal_id"))
             if person_id is None or person_id not in person_ids_needed:
                 continue
@@ -940,13 +968,19 @@ def generate() -> None:
 
     person_alternate_name_rows_set: set[tuple[int, str]] = set()
     person_alternate_name_path = DATASETS_DIR / "person_alternate_names.csv"
+    person_alternate_name_total_rows = count_data_rows(person_alternate_name_path)
     with person_alternate_name_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required_cols = {"person_mal_id", "alt_name"}
         if not required_cols.issubset(set(reader.fieldnames or [])):
             raise GeneratorError(f"Missing required columns in {person_alternate_name_path}")
 
-        for row in reader:
+        for row in tqdm(
+            reader,
+            total=person_alternate_name_total_rows,
+            desc="Reading person alternate names",
+            unit="row",
+        ):
             person_id = parse_int(row.get("person_mal_id"))
             alternate_name = normalize_text(row.get("alt_name"))
             if person_id is None or alternate_name is None:
@@ -1179,7 +1213,7 @@ def generate() -> None:
         ),
     ]
 
-    for out_path, sql_content, row_count in outputs:
+    for out_path, sql_content, row_count in tqdm(outputs, desc="Writing seed SQL files", unit="file"):
         out_path.write_text(sql_content, encoding="utf-8")
         print(f"Wrote {out_path.relative_to(ROOT)} ({row_count} rows)")
 

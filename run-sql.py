@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import psycopg
+from tqdm import tqdm
 
 
 def parse_args() -> argparse.Namespace:
@@ -46,7 +47,7 @@ def get_sql_files(scripts_dir: Path) -> list[Path]:
 def execute_sql_files(connection_string: str, sql_files: list[Path]) -> None:
 	with psycopg.connect(connection_string) as connection:
 		with connection.cursor() as cursor:
-			for sql_file in sql_files:
+			for sql_file in tqdm(sql_files, desc="Executing SQL files", unit="file"):
 				sql = sql_file.read_text(encoding="utf-8").strip()
 				if not sql:
 					continue

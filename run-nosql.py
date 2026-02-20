@@ -6,10 +6,16 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from pymongo import MongoClient
 from pymongo.errors import BulkWriteError, ConnectionFailure
+from tqdm import tqdm
+
+
+def chunked(items: list[dict[str, Any]], batch_size: int) -> Iterator[list[dict[str, Any]]]:
+    for idx in range(0, len(items), batch_size):
+        yield items[idx : idx + batch_size]
 
 
 def load_env_variables() -> None:
@@ -51,6 +57,7 @@ def insert_documents(
     users: list[dict[str, Any]],
     ratings: list[dict[str, Any]],
     clear_collections: bool,
+    batch_size: int,
 ) -> None:
     try:
         client = MongoClient(connection_string, serverSelectionTimeoutMS=5000)
@@ -66,14 +73,28 @@ def insert_documents(
             print("Cleared existing documents from users and ratings collections.")
 
         if users:
-            user_result = users_collection.insert_many(users, ordered=False)
-            print(f"Inserted {len(user_result.inserted_ids)} user documents into {database_name}.users")
+            inserted_users = 0
+            for batch in tqdm(
+                chunked(users, batch_size),
+                desc="Inserting users",
+                unit="batch",
+            ):
+                user_result = users_collection.insert_many(batch, ordered=False)
+                inserted_users += len(user_result.inserted_ids)
+            print(f"Inserted {inserted_users} user documents into {database_name}.users")
         else:
             print("No user documents to insert.")
 
         if ratings:
-            rating_result = ratings_collection.insert_many(ratings, ordered=False)
-            print(f"Inserted {len(rating_result.inserted_ids)} rating documents into {database_name}.ratings")
+            inserted_ratings = 0
+            for batch in tqdm(
+                chunked(ratings, batch_size),
+                desc="Inserting ratings",
+                unit="batch",
+            ):
+                rating_result = ratings_collection.insert_many(batch, ordered=False)
+                inserted_ratings += len(rating_result.inserted_ids)
+            print(f"Inserted {inserted_ratings} rating documents into {database_name}.ratings")
         else:
             print("No rating documents to insert.")
 
@@ -113,6 +134,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Delete existing users and ratings documents before insert.",
     )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=1000,
+        help="Number of documents per insert batch (default: 1000).",
+    )
     return parser.parse_args()
 
 
@@ -136,6 +163,7 @@ def main() -> None:
             users=users,
             ratings=ratings,
             clear_collections=args.clear,
+            batch_size=max(1, args.batch_size),
         )
 
         print("NoSQL load completed successfully.")
